@@ -11,6 +11,15 @@ module mux4 (output out, input [3:0] in, [1:0] sel);
 
 endmodule
 
+module mux2x32 (
+	output reg [31:0] out,
+	input      [31:0] in0,
+	input      [31:0] in1,
+	input             sel
+);
+
+endmodule
+
 module mux32x32 (
     output reg [31:0] out,
     input      [31:0] in0,  input [31:0] in1,

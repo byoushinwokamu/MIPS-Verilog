@@ -1,3 +1,18 @@
+module demux2x9 (out, in, en, sel);
+	output reg [1:0] out;
+	input in, en;
+	input sel;
+
+	always @(*) begin
+		out = 2'b00;
+		case (sel)
+			1'b0: out[0] = in & en;
+			1'b1: out[1] = in & en;
+		endcase
+	end
+
+endmodule
+
 module demux4 (out, in, en, sel);
 	output reg [3:0] out;
 	input in, en;
