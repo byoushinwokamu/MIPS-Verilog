@@ -36,7 +36,7 @@ module ALUopDecoder(
 	// ALUop3
 	wire wd [1:13];
 	and (wd[1], ~op0, ~op1, ~op2, ~op3, ~op4, ~op5);
-	and (wd[2], ~op0, op1, ~op2, ~op3, ~op4, ~op5);
+	and (wd[2], ~op0, ~op1, op2, ~op3, ~op4, ~op5);
 	and (wd[3], op0, ~op1, ~op2, ~op3, op4, op5);
 	and (wd[4], op0, ~op1, op2, ~op3, op4, op5);
 	and (wd[5], ~op0, ~op1, ~op2, op3, ~op4, op5);
