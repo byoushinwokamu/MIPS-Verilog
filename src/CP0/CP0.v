@@ -174,4 +174,112 @@ module CP0_tb;
 	end
 
 endmodule
-e
+
+module CP0_tb2;
+    reg ExpSrc0, ExpSrc1, ExpSrc2;
+    reg clk, enable, reset;
+    reg [31:0] Instruction, PCin, Din;
+    wire [31:0] PCout, Dout;
+    wire ExRegWrite, ExpBlock, IsEret, HasExp;
+
+    CP0 dut (
+        .PCout, .Dout, .ExRegWrite, .ExpBlock, .IsEret, .HasExp,
+        .ExpSrc0, .ExpSrc1, .ExpSrc2, .clk, .enable,
+        .Instruction, .PCin, .Din, .reset
+    );
+
+    initial clk = 0;
+    always #5 clk = ~clk;
+
+    task tick;
+        begin #10; end
+    endtask
+
+    task reset_all;
+        begin
+            ExpSrc0 = 0; ExpSrc1 = 0; ExpSrc2 = 0;
+            enable = 0; reset = 1;
+            Instruction = 0;
+            PCin = 32'hDEAD_BEEF;
+            Din = 32'h12345678;
+            tick();
+            reset = 0;
+            tick();
+        end
+    endtask
+
+    task write_cp0(input [1:0] sel, input [31:0] val);
+        begin
+            enable = 1;
+            Instruction[23] = 0;         // ExRegWrite = ~Instruction[23] = 1
+            Instruction[12:11] = sel;
+            Din = val;
+            tick();
+            enable = 0;
+        end
+    endtask
+
+    task read_cp0(input [1:0] sel);
+        begin
+            Instruction[23] = 1;         // ExRegWrite = 0
+            Instruction[12:11] = sel;
+            tick();
+            $display("Dout[sel=%0d] = 0x%08X", sel, Dout);
+        end
+    endtask
+
+    task trigger_exp(input integer idx);
+        begin
+            if (idx == 0) ExpSrc0 = 1;
+            else if (idx == 1) ExpSrc1 = 1;
+            else if (idx == 2) ExpSrc2 = 1;
+            tick();
+            ExpSrc0 = 0; ExpSrc1 = 0; ExpSrc2 = 0;
+            tick();  // propagate
+        end
+    endtask
+
+    task check_eret;
+        begin
+            Instruction[5:0] = 6'b011000;  // eret pattern
+            tick();
+            $display("IsEret = %b, PCout = 0x%08X", IsEret, PCout);
+        end
+    endtask
+
+    initial begin
+        $display("=== CP0 Test Start ===");
+
+        reset_all();
+
+        // Status[0] = 1 (ExpBlock = 1)
+        write_cp0(2'b01, 32'h00000001);
+        $display("ExpBlock = %b", ExpBlock);
+
+        // Block = 0x00000007 (BlockSrc0/1/2 = 1)
+        write_cp0(2'b10, 32'h00000007);
+
+        // Exception from ExpSrc0 → BlockSrc0 = 1 → 무시되어야 함
+        trigger_exp(0);
+        $display("Blocked ExpSrc0 → HasExp = %b", HasExp);
+
+        // Block = 0x00000000 (모두 허용)
+        write_cp0(2'b10, 32'h00000000);
+
+        // Exception from ExpSrc1 → Cause = 0x00000003
+        trigger_exp(1);
+        $display("ExpSrc1 allowed → HasExp = %b", HasExp);
+        read_cp0(2'b11);  // Cause
+        read_cp0(2'b00);  // EPC (should be PCin)
+
+        // EPC 직접 쓰기 (sel == 00)
+        write_cp0(2'b00, 32'hAABBCCDD);
+        read_cp0(2'b00);
+
+        // ERET 명령 디코드
+        check_eret();
+
+        $display("=== CP0 Test Done ===");
+        #20 $finish;
+    end
+endmodule

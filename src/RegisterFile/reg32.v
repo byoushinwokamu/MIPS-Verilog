@@ -49,51 +49,55 @@ module reg32_tb;
 endmodule
 
 module reg32_ll_tb;
-    reg [31:0] writedata;
-    reg clk, wen, reset;
-    wire [31:0] readdata;
+	reg [31:0] writedata;
+	reg clk, wen, reset;
+	wire [31:0] readdata;
 
-    reg32_ll dut (
-        .readdata(readdata),
-        .writedata(writedata),
-        .clk(clk),
-        .wen(wen),
-        .reset(reset)
-    );
+	reg32_ll dut (
+		.readdata(readdata),
+		.writedata(writedata),
+		.clk(clk),
+		.wen(wen),
+		.reset(reset)
+	);
 
-    task show(input string tag);
-        begin
-            $display("[%s] clk=%b wen=%b reset=%b → readdata=0x%08X", 
-                tag, clk, wen, reset, readdata);
-        end
-    endtask
+	integer step;
 
-    initial begin
-        $display("=== reg32_ll Test ===");
+	task show;
+		begin
+			$display("[step %0d] clk=%b wen=%b reset=%b → readdata=0x%08X", 
+								step, clk, wen, reset, readdata);
+			step = step + 1;
+		end
+	endtask
 
-        // 초기화
-        clk = 1; wen = 0; reset = 1; writedata = 32'hDEAD_BEEF;
-        #1 show("reset asserted");
-        reset = 0; #1;
+	initial begin
+		$display("=== reg32_ll Verilog Test ===");
+		step = 0;
 
-        // clk=0, wen=1 → write 동작
-        clk = 0; wen = 1; writedata = 32'h12345678; #1;
-        show("write on clk=0");
+		// 초기화
+		clk = 1; wen = 0; reset = 1; writedata = 32'hDEAD_BEEF;
+		#1 show();
+		reset = 0; #1;
 
-        // clk=1 → write 안됨
-        clk = 1; #1;
-        writedata = 32'h99999999; #1;
-        show("no write on clk=1");
+		// clk=0, wen=1 → write 동작
+		clk = 0; wen = 1; writedata = 32'h12345678; #1;
+		show();
 
-        // clk=0, wen=1 → write 다시
-        clk = 0; writedata = 32'hABCDEF01; #1;
-        show("second write on clk=0");
+		// clk=1 → write 안됨
+		clk = 1; #1;
+		writedata = 32'h99999999; #1;
+		show();
 
-        // clk=0, wen=0 → 유지
-        wen = 0; writedata = 32'hFFFFFFFF; #1;
-        show("write disabled");
+		// clk=0, wen=1 → write 다시
+		clk = 0; writedata = 32'hABCDEF01; #1;
+		show();
 
-        $display("=== Done ===");
-        #5 $finish;
-    end
+		// clk=0, wen=0 → 유지
+		wen = 0; writedata = 32'hFFFFFFFF; #1;
+		show();
+
+		$display("=== Done ===");
+		#5 $finish;
+	end
 endmodule

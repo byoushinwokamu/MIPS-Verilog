@@ -76,7 +76,7 @@ module ALUDecoder_tb;
 		// R-type
 		test_case(6'b000000, 6'b100000, 4'b0101, 0, 0, 0); // add
 		test_case(6'b000000, 6'b100010, 4'b0110, 0, 0, 0); // sub
-		test_case(6'b000000, 6'b100100, 4'b0111, 0, 0, 0); // and //
+		test_case(6'b000000, 6'b100100, 4'b0111, 0, 0, 0); // and 
 		test_case(6'b000000, 6'b100101, 4'b1000, 0, 0, 0); // or
 		test_case(6'b000000, 6'b100111, 4'b1010, 0, 0, 0); // nor
 		test_case(6'b000000, 6'b101010, 4'b1011, 0, 0, 0); // slt
