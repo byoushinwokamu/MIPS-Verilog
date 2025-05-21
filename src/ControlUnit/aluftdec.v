@@ -52,3 +52,5 @@ module ALUftDecoder (
 	or (IsShamt, wsh[1], wsh[2], wsh[3]);
 
 endmodule
+
+// No independent tb

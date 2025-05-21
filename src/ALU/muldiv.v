@@ -20,3 +20,5 @@ module Div (res, rem, sr, tg, upper);
 	assign rem = (sr + upper) % tg;
 
 endmodule
+
+// No independent tb
