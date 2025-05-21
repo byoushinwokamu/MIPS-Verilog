@@ -33,20 +33,23 @@ module CP0 (
 		BlockSrc2 ? 1'b0: ExpSrc2
 	);
 	and (ExpClick, wes1, ~ExpBlock);
-	dff dff1 (
-		.q(wes2), .d(~wes2), .clk(ExpClick), .enable(1'b1), .reset(wes3)
+	counter1 cnt1 (
+		.q(wes2), .clk(ExpClick), .clear(wes3), .rst(reset)
 	);
-	dff dff2 (
-		.q(wes3), .d(~wes3), .clk(HasExp), .enable(1'b1), .reset(~wes2)
+	counter1 cnt2 (
+		.q(wes3), .clk(HasExp), .clear(~wes2), .rst(reset)
 	);
 	and (HasExp, clk, wes2);
 
 	// Registers
 	wire [31:0] causein;
-	assign causein = ExpSrc0 ? 32'h1 : (ExpSrc1 ? 32'h3 : (ExpSrc2 ? 32'h7 : 32'hzzzzzzzz));
+	assign causein = {29'b0, ExpSrc2, ExpSrc1 | ExpSrc2, ExpSrc0 | ExpSrc1 | ExpSrc2};
 	reg32 Cause (.readdata(wrm3), .writedata(causein), .clk(ExpClick), .wen(1'b1), .reset);
 
 	reg32 Block (.readdata(wrm2), .writedata(Din), .clk, .wen(wand3), .reset);
+	assign BlockSrc0 = wrm2[0];
+	assign BlockSrc1 = wrm2[1];
+	assign BlockSrc2 = wrm2[2];
 
 	reg32 Status (.readdata(wrm1), .writedata(Din), .clk, .wen(wand2), .reset);
 	assign ExpBlock = wrm1[0];
