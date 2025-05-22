@@ -8,6 +8,7 @@ module DataMemory (dout, din, addr, clk, wen, ren, reset);
 	reg [31:0] mem [1023:0];
 	integer i;
 
+	// if fucked up, always @(*)
 	always @(posedge clk or posedge reset) begin
 		if (reset)
 			for (i = 0; i < 1024; i = i+1) mem[i] <= 32'b0;
