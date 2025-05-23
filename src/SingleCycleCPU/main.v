@@ -53,7 +53,7 @@ module SingleCycleCPU #(
 	ProgramCounter mPC (
 		.progaddr(wPC),
 		.prevprog(wPC),
-		.op(wInst[25:0]),
+		.op(wInst),
 		.jumpamt(wImm16),
 		.jumpaddr(wRF_R1data),
 		.CP0_PCout(wCP0_PCout),
@@ -94,7 +94,7 @@ module SingleCycleCPU #(
 		.BneOrBeq, .ALUSrc, .IsSyscall, .ZeroExtend,
 		.MemRead, .MemWrite, .Jump, .Branch, .RegDst,
 		.IsJR, .IsCOP0, .ReadRs, .ReadRt,
-		.ALUop, .op(wInst[26:21]), .funct(wInst[5:0])
+		.ALUop, .op(wInst[31:26]), .funct(wInst[5:0])
 	);
 
 	CP0 mCP (
@@ -167,7 +167,7 @@ module SingleCycleCPU #(
 		.R(statR),
 		.I(statI),
 		.TotalCycles(statTC),
-		.op(wInst[26:21]),
+		.op(wInst[31:26]),
 		.clk, .rst(reset)
 	);
 

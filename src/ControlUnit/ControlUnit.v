@@ -22,10 +22,8 @@ module ControlUnit (
 		.ZeroExtend,
 		.ReadRs,
 		.ReadRt,
-		.op0(op[5]), .op1(op[4]), .op2(op[3]),
-		.op3(op[2]), .op4(op[1]), .op5(op[0]),
-		.ft0(funct[5]), .ft1(funct[4]), .ft2(funct[3]),
-		.ft3(funct[2]), .ft4(funct[1]), .ft5(funct[0])
+		.op,
+		.ft(funct)
 	);
 
 	ALUDecoder alud (
@@ -33,10 +31,8 @@ module ControlUnit (
 		.IsJR,
 		.IsShamt,
 		.ALUop,
-		.op0(op[5]), .op1(op[4]), .op2(op[3]),
-		.op3(op[2]), .op4(op[1]), .op5(op[0]),
-		.ft0(funct[5]), .ft1(funct[4]), .ft2(funct[3]),
-		.ft3(funct[2]), .ft4(funct[1]), .ft5(funct[0])
+		.op,
+		.ft(funct)
 	);
 
 	// Exception Handler

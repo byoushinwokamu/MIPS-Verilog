@@ -1,7 +1,7 @@
 module ProgramCounter (
 	output [31:0] progaddr,
 	input [31:0] prevprog,
-	input [25:0] op,
+	input [31:0] op,
 	input [31:0] jumpamt,
 	input [31:0] jumpaddr,
 	input [31:0] CP0_PCout,
@@ -19,7 +19,7 @@ module ProgramCounter (
 	wire wmux5, wand2, wor1;
 
 	assign wnextprog = prevprog + 32'h4;
-	assign wjump = {wnextprog[31:28], op, 2'b0};
+	assign wjump = {wnextprog[31:28], op[25:0], 2'b0};
 	assign wjadd = wnextprog + (jumpamt << 2);
 	and (wand1, Branch, Equal ^ BneOrBeq);
 	assign wmux1 = wand1 ? wjadd : wnextprog;
