@@ -11,6 +11,7 @@ module CP0 (
 	wire [1:0] sel;
 	wire BlockSrc0, BlockSrc1, BlockSrc2;
 	wire wes1, wes2, wes3, ExpClick;
+	wire wesdmx1, wesdmx2, wesdmx3;
 	wire [31:0] wrm0;
 	wire [31:0] wrm1;
 	wire [31:0] wrm2;
@@ -26,12 +27,10 @@ module CP0 (
 	);
 
 	// Exception Signals
-	or (
-		wes1, 
-		BlockSrc0 ? 1'b0: ExpSrc0,
-		BlockSrc1 ? 1'b0: ExpSrc1,
-		BlockSrc2 ? 1'b0: ExpSrc2
-	);
+	assign wesdmx1 = BlockSrc0 ? 1'b0 : ExpSrc0;
+	assign wesdmx2 = BlockSrc1 ? 1'b0 : ExpSrc1;
+	assign wesdmx3 = BlockSrc2 ? 1'b0 : ExpSrc2;
+	or (wes1,	wesdmx1, wesdmx2, wesdmx3);
 	and (ExpClick, wes1, ~ExpBlock);
 	counter1 cnt1 (
 		.q(wes2), .clk(ExpClick), .clear(wes3), .rst(reset)

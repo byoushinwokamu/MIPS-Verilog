@@ -188,7 +188,7 @@ module A_CPU_Starter;
 
 	initial begin
 		#5 reset = 1'b1;
-		#10 reset = 1'b0;
+		#5 reset = 1'b0;
 		#16000 $finish;
 	end
 
