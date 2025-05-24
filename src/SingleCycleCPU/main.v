@@ -140,6 +140,8 @@ module SingleCycleCPU #(
 		.ALUop
 	);
 
+	assign wImm5 = {28'b0, wInst[10:6]};
+	ImmediateExtender mIE (.out(wImm16), .in(wInst[15:0]), .ZeroExtend);
 	assign wALU_mux1 = ALUSrc ? wImm16 : wRF_R2data;
 	assign wALUx = IsShamt ? wRF_R2data : wRF_R1data;
 	assign wALUy = IsShamt ? wImm5 : wALU_mux1;

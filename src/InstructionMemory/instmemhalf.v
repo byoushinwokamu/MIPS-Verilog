@@ -5,13 +5,14 @@ module InstMem_half #(
 	input [8:0] addr;
 	input clk, reset;
 
-	// 512 × 4byte ROM
+	// 512byte ROM
 	reg [31:0] rom [0:511];
 	integer i;
 
-	always @(posedge clk or posedge reset) begin
+	// always @(posedge clk or posedge reset) begin
+	always @(*) begin
 		if (reset) begin
-			for (i = 0; i < 512; i = i+1) rom[i] = 32'b0;
+			for (i = 0; i < 512; i = i+1) rom[i] = 8'b0;
 			$readmemh(INIT_FILE, rom);
 		end else dout <= rom[addr];
 	end

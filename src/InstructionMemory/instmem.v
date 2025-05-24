@@ -9,10 +9,10 @@ module InstMemory #(
 	wire [31:0] dout1;
 	wire [31:0] dout2;
 	InstMem_half #(.INIT_FILE(INIT_FILE1)) IMem1 (
-		.dout(dout1), .addr(addr[8:0]), .clk(clk), .reset(reset)
+		.dout(dout1), .addr(addr[8:0]), .clk, .reset
 	);
 	InstMem_half #(.INIT_FILE(INIT_FILE2)) IMem2 (
-		.dout(dout2), .addr(addr[8:0]), .clk(clk), .reset(reset)
+		.dout(dout2), .addr(addr[8:0]), .clk, .reset
 	);
 
 	// Multiplexing output
