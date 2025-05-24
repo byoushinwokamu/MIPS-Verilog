@@ -5,25 +5,23 @@ module ALUDecoder(
 	output [3:0] ALUop,
 	input [5:0] ft,
 	input [5:0] op
-	// input ft0, ft1, ft2, ft3, ft4, ft5,
-	// input op0, op1, op2, op3, op4, op5
 );
 	wire IsSpecial;
-	nor (
-		IsSpecial, op[0], op[1], op[2], op[3], op[4], op[5]
+	and (
+		IsSpecial, ~op[0], ~op[1], ~op[2], ~op[3], ~op[4], ~op[5]
 	);
 
 	wire [3:0] aop_ft;
 	wire jr_ft, sc_ft, sh_ft;
 	ALUftDecoder ftd (
-		.ALUop,
+		.ALUop(aop_ft),
 		.IsJR(jr_ft), .IsSyscall(sc_ft), .IsShamt(sh_ft),
 		.ft
 	);
 
 	wire [3:0] aop_op;
 	ALUopDecoder opd (
-		.ALUop,
+		.ALUop(aop_op),
 		.op
 	);
 
@@ -31,7 +29,7 @@ module ALUDecoder(
 	assign IsSyscall = IsSpecial ? sc_ft  : 1'b0;
 	assign IsJR      = IsSpecial ? jr_ft  : 1'b0;
 	assign IsShamt   = IsSpecial ? sh_ft  : 1'b0;
-	assign ALUop     = IsSpecial ? aop_ft : aop_op;
+	assign ALUop     = ~IsSpecial ? aop_op : aop_ft;
 
 endmodule
 

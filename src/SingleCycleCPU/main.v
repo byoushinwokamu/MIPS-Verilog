@@ -191,7 +191,7 @@ module A_CPU_Starter;
 	initial begin
 		#5 reset = 1'b1;
 		#5 reset = 1'b0;
-		#16000 $finish;
+		#16500 $finish;
 	end
 
 	always #5 clk = ~clk;
