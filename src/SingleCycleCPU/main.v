@@ -195,6 +195,9 @@ module A_CPU_Starter;
 	end
 
 	always #5 clk = ~clk;
+	always @(posedge CPU.mDM.wen) begin
+			#1 $display ("Clock %3d, At 0x%08X, Memory write occured: %3d to 0x%08X", statTC, CPU.wPC, CPU.mDM.din, CPU.mDM.addr);
+	end
 
 	SingleCycleCPU # (
 		.INIT_FILE1("prog1.hex"),
