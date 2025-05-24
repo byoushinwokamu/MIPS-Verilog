@@ -6,7 +6,7 @@ module SingleCycleCPU #(
 	output [31:0] statR,
 	output [31:0] statI,
 	output [31:0] statTC,
-	input clk, reset
+	input extclk, reset
 );
 
 	// Wire declaration
@@ -46,6 +46,7 @@ module SingleCycleCPU #(
 	wire ReadRs, ReadRt, Halt;
 	wire ExRegWrite, ExpBlock, ExpSrc0, ExpSrc1, ExpSrc2;
 	wire [3:0] ALUop;
+	wire clk;
 
 	/////////////////////////////////////////////////////////////////
 
@@ -163,7 +164,7 @@ module SingleCycleCPU #(
 
 	/////////////////////////////////////////////////////////////////
 
-	// Statistics
+	// etc.
 	Statistics mST (
 		.J(statJ),
 		.R(statR),
@@ -172,6 +173,9 @@ module SingleCycleCPU #(
 		.op(wInst[31:26]),
 		.clk, .rst(reset)
 	);
+
+	assign clk = Halt ? 1'b1 : extclk;
+	// assign clk = extclk;
 
 endmodule
 
@@ -185,12 +189,9 @@ module A_CPU_Starter;
 
 	initial begin
 		clk = 1'b0;
-		reset = 1'b0;
-	end
-
-	initial begin
-		#5 reset = 1'b1;
-		#5 reset = 1'b0;
+		reset = 1'b1;
+		// #5 reset = 1'b1;
+		#15 reset = 1'b0;
 		#16500 $finish;
 	end
 
@@ -203,7 +204,7 @@ module A_CPU_Starter;
 		.INIT_FILE1("prog1.hex"),
 		.INIT_FILE2("prog2.hex")
 	) CPU (
-		.disp7seg, .statJ, .statR, .statI, .statTC, .clk, .reset
+		.disp7seg, .statJ, .statR, .statI, .statTC, .extclk(clk), .reset
 	);
 
 endmodule

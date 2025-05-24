@@ -14,10 +14,12 @@ module DataMemory (dout, din, addr, clk, wen, ren, reset);
 		if (reset)
 			for (i = 0; i < 1024; i = i+1) mem[i] <= 32'b0;
 		else begin
-			if (wen) mem[addr] <= din;
 			if (ren) dout <= mem[addr]; 
 		end
 	end
+
+	always @(posedge clk)
+		if (wen) mem[addr] <= din;
 
 endmodule
 
