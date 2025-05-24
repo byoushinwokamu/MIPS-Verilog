@@ -10,6 +10,8 @@ module SingleCycleCPU #(
 );
 
 	// Wire declaration
+	reg clk;
+
 	wire [31:0] wPC;
 	wire [31:0] wPCplus4;
 
@@ -46,7 +48,6 @@ module SingleCycleCPU #(
 	wire ReadRs, ReadRt, Halt;
 	wire ExRegWrite, ExpBlock, ExpSrc0, ExpSrc1, ExpSrc2;
 	wire [3:0] ALUop;
-	wire clk;
 
 	/////////////////////////////////////////////////////////////////
 
@@ -174,13 +175,15 @@ module SingleCycleCPU #(
 		.clk, .rst(reset)
 	);
 
-	assign clk = Halt ? 1'b1 : extclk;
-	// assign clk = extclk;
+	always @(extclk) begin
+		if (Halt) clk <= 1'b1;
+		else clk <= extclk;
+	end
 
 endmodule
 
 module A_CPU_Starter;
-	reg clk, reset;
+	reg extclk, reset;
 	wire [31:0] disp7seg;
 	wire [31:0] statJ;
 	wire [31:0] statR;
@@ -188,14 +191,13 @@ module A_CPU_Starter;
 	wire [31:0] statTC;
 
 	initial begin
-		clk = 1'b0;
+		extclk = 1'b0;
 		reset = 1'b1;
-		// #5 reset = 1'b1;
-		#15 reset = 1'b0;
+		#10 reset = 1'b0;
 		#16500 $finish;
 	end
 
-	always #5 clk = ~clk;
+	always #5 extclk = ~extclk;
 	always @(posedge CPU.mDM.wen) begin
 			#1 $display ("Clock %3d, At 0x%08X, Memory write occured: %3d to 0x%08X", statTC, CPU.wPC, CPU.mDM.din, CPU.mDM.addr);
 	end
@@ -204,7 +206,7 @@ module A_CPU_Starter;
 		.INIT_FILE1("prog1.hex"),
 		.INIT_FILE2("prog2.hex")
 	) CPU (
-		.disp7seg, .statJ, .statR, .statI, .statTC, .extclk(clk), .reset
+		.disp7seg, .statJ, .statR, .statI, .statTC, .extclk, .reset
 	);
 
 endmodule
