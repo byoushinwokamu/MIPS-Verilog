@@ -44,8 +44,7 @@ module SingleCycleCPU #(
 	wire IsEret, IsCOP0, HasExp, Equal, BneOrBeq, Branch, Jump, IsJR;
 	wire IsJAL, IsShamt, MemtoReg, RegWrite;
 	wire ALUSrc, IsSyscall, ZeroExtend;
-	wire MemRead, MemWrite, RegDst;
-	wire ReadRs, ReadRt, Halt;
+	wire MemRead, MemWrite, RegDst, ReadRs, ReadRt, Halt;
 	wire ExRegWrite, ExpBlock, ExpSrc0, ExpSrc1, ExpSrc2;
 	wire [3:0] ALUop;
 
@@ -150,7 +149,7 @@ module SingleCycleCPU #(
 
 	/////////////////////////////////////////////////////////////////
 
-	// MEM: Memory Access
+	// ME: Memory Access
 	DataMemory mDM (
 		.dout(wDMdata),
 		.din(wRF_R2data),
@@ -162,8 +161,6 @@ module SingleCycleCPU #(
 
 	// WB: Write Back
 	assign wWriteBack = MemtoReg ? wDMdata : wALUres;
-
-	/////////////////////////////////////////////////////////////////
 
 	// etc.
 	Statistics mST (
@@ -179,6 +176,8 @@ module SingleCycleCPU #(
 		if (Halt) clk <= 1'b1;
 		else clk <= extclk;
 	end
+
+	/////////////////////////////////////////////////////////////////
 
 endmodule
 

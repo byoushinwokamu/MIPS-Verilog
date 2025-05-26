@@ -31,62 +31,112 @@ module ALU (result1, result2, OF, CF, Equal, sr, tg, ALUop);
 	assign OF = OCF[ALUop][1];
 	assign CF = OCF[ALUop][0];
 
+	assign OCF[0] = 2'b0;
+	assign OCF[1] = 2'b0;
+	assign OCF[2] = 2'b0;
+	assign OCF[3] = 2'b0;
+	assign OCF[4] = 2'b0;
+	assign OCF[7] = 2'b0;
+	assign OCF[8] = 2'b0;
+	assign OCF[9] = 2'b0;
+	assign OCF[10] = 2'b0;
+	assign OCF[11] = 2'b0;
+	assign OCF[12] = 2'b0;
+	assign OCF[13] = 2'b0;
+	assign OCF[14] = 2'b0;
+	assign OCF[15] = 2'b0;
+	assign res2[0] = 32'b0;
+	assign res2[1] = 32'b0;
+	assign res2[2] = 32'b0;
+	assign res2[5] = 32'b0;
+	assign res2[6] = 32'b0;
+	assign res2[7] = 32'b0;
+	assign res2[8] = 32'b0;
+	assign res2[9] = 32'b0;
+	assign res2[10] = 32'b0;
+	assign res2[11] = 32'b0;
+	assign res2[12] = 32'b0;
+	assign res2[13] = 32'b0;
+	assign res2[14] = 32'b0;
+	assign res2[15] = 32'b0;
+
 endmodule
 
-module ALU_tb;
-	reg [31:0] sr, tg;
-	reg [3:0] ALUop;
-	wire [31:0] result1, result2;
-	wire OF, CF, Equal;
+module tb_ALU;
 
-	ALU inst (
-		.result1(result1), .result2(result2),
-		.OF(OF), .CF(CF), .Equal(Equal),
-		.sr(sr), .tg(tg), .ALUop(ALUop)
-	);
+    reg [31:0] sr, tg;
+    reg [3:0] ALUop;
+    wire [31:0] result1, result2;
+    wire OF, CF, Equal;
 
-	task test;
-		input [3:0] op;
-		input [31:0] a, b;
-		begin
-			ALUop = op;
-			sr = a;
-			tg = b;
-			#1;
-			$display("[ALUop %2d] sr = 0x%08X, tg = 0x%08X", ALUop, sr, tg);
-			$display("  → result1 = 0x%08X, result2 = 0x%08X, OF = %b, CF = %b, Equal = %b",
-					result1, result2, OF, CF, Equal);
-			$display("--------------------------------------------------------");
-		end
-	endtask
+    ALU dut (
+        .result1(result1), .result2(result2), .OF(OF), .CF(CF), .Equal(Equal),
+        .sr(sr), .tg(tg), .ALUop(ALUop)
+    );
 
-	initial begin
-		$display("=== ALU Test ===");
+    task test;
+        input [8*20:1] op_name;
+        input [31:0] s, t;
+        input [3:0] op;
+        input [31:0] exp_result1;
+        input [31:0] exp_result2;
+        input exp_OF, exp_CF;
 
-		test(0, 32'h00000001, 32'd4);   // sll
-		test(1, 32'hF0000000, 32'd4);   // sra
-		test(2, 32'hF0000000, 32'd4);   // srl
+        begin
+            sr = s;
+            tg = t;
+            ALUop = op;
+            #1;
+            $display("==== ALUop: %s ====", op_name);
+            $display("Inputs sr = %h, tg = %h", sr, tg);
+            $display("Result1  = %h (expected %h) %s", result1, exp_result1, (result1 === exp_result1) ? "OK" : "MISMATCH");
+            $display("Result2  = %h (expected %h) %s", result2, exp_result2, (result2 === exp_result2) ? "OK" : "MISMATCH");
+            $display("OF = %b (exp %b) %s", OF, exp_OF, (OF === exp_OF) ? "OK" : "MISMATCH");
+            $display("CF = %b (exp %b) %s", CF, exp_CF, (CF === exp_CF) ? "OK" : "MISMATCH");
+            $display("");
+        end
+    endtask
 
-		test(3, 32'h00000010, 32'h00000004); // mul: 16 × 4 = 64
+    initial begin
+        // sll edge cases
+        test("sll_zero", 32'h00000001, 32'h00000000, 4'd0, 32'h00000001, 32'h00000000, 0, 0);
+        test("sll_maxshift", 32'h00000001, 32'h0000001F, 4'd0, 32'h80000000, 32'h00000000, 0, 0);
 
-		test(4, 32'h00000010, 32'h00000003); // div: 16 / 3 = 5, rem = 1
+        // sra edge cases
+        test("sra_pos", 32'h7FFFFFFF, 32'd1, 4'd1, 32'h3FFFFFFF, 32'h00000000, 0, 0);
+        test("sra_neg", 32'hFFFFFFFF, 32'd1, 4'd1, 32'hFFFFFFFF, 32'h00000000, 0, 0);
 
-		test(5, 32'h7FFFFFFF, 32'd1);   // add: overflow 발생
-		test(6, 32'h80000000, 32'd1);   // sub: overflow 발생
+        // srl edge cases
+        test("srl_pos", 32'h80000000, 32'd1, 4'd2, 32'h40000000, 32'h00000000, 0, 0);
 
-		test(7, 32'hFF00FF00, 32'h0F0F0F0F); // and
-		test(8, 32'hF0000000, 32'h0000FFFF); // or
-		test(9, 32'hAAAA5555, 32'hFFFF0000); // xor
-		test(10, 32'h00000000, 32'h00000000); // nor
+        // add + overflow
+        test("add_overflow", 32'h7FFFFFFF, 32'h00000001, 4'd5, 32'h80000000, 32'h00000000, 1, 0);
 
-		test(11, -5, 3);                // signed comp: 1
-		test(11, 5, -3);                // signed comp: 0
+        // sub - underflow
+        test("sub_underflow", 32'h00000000, 32'h00000001, 4'd6, 32'hFFFFFFFF, 32'h00000000, 1, 1);
 
-		test(12, 32'h00000001, 32'hFFFFFFFF); // unsigned comp: 1
-		test(12, 32'hFFFFFFFF, 32'h00000001); // unsigned comp: 0
+        // mul
+        test("mul_basic", 32'h00000010, 32'h00000010, 4'd3, 32'h00000100, 32'h00000000, 0, 0);
 
-		$display("=== Test Done ===");
-		#10 $finish;
-	end
+        // div
+        test("div_basic", 32'd7, 32'd3, 4'd4, 32'd2, 32'd1, 0, 0);
+
+        // and, or, xor, nor
+        test("and_basic", 32'hF0F0F0F0, 32'h0F0F0F0F, 4'd7, 32'h00000000, 32'h00000000, 0, 0);
+        test("or_basic", 32'hF0F0F0F0, 32'h0F0F0F0F, 4'd8, 32'hFFFFFFFF, 32'h00000000, 0, 0);
+        test("xor_basic", 32'hAAAA5555, 32'hFFFF0000, 4'd9, 32'h55555555, 32'h00000000, 0, 0);
+        test("nor_basic", 32'h00000000, 32'hFFFFFFFF, 4'd10, 32'h00000000, 32'h00000000, 0, 0);
+
+        // slt: signed comparison
+        test("slt_true", 32'd1, -32'sd1, 4'd11, 32'd0, 32'd0, 0, 0);
+        test("slt_false", -32'sd1, 32'd1, 4'd11, 32'd1, 32'd0, 0, 0);
+
+        // sltu: unsigned comparison
+        test("sltu_true", 32'h00000001, 32'hFFFFFFFF, 4'd12, 32'd1, 32'd0, 0, 0);
+        test("sltu_false", 32'hFFFFFFFF, 32'h00000001, 4'd12, 32'd0, 32'd0, 0, 0);
+
+        $display("All ALU tests completed.");
+        $finish;
+    end
 
 endmodule

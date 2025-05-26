@@ -13,59 +13,66 @@ module SyscallDecoder (
 
 endmodule
 
-module SyscallDecoder_tb;
-	reg [31:0] v0, a0;
-	reg clk, en, reset;
-	wire Halt;
-	wire [31:0] Hex;
+module tb_SyscallDecoder;
 
-	SyscallDecoder inst (
-		.Halt(Halt),
-		.Hex(Hex),
-		.v0(v0),
-		.a0(a0),
-		.clk(clk),
-		.en(en),
-		.reset(reset)
-	);
+  reg [31:0] v0, a0;
+  reg clk, en, reset;
+  wire Halt;
+  wire [31:0] Hex;
 
-	initial clk = 0;
-	always #5 clk = ~clk;
+  SyscallDecoder dut (
+    .Halt(Halt), .Hex(Hex), .v0(v0), .a0(a0), .clk(clk), .en(en), .reset(reset)
+  );
 
-	task tick;
-		begin #10; end
-	endtask
+  task tick;
+    begin
+      #1 clk = 1;
+      #1 clk = 0;
+    end
+  endtask
 
-	task run_syscall(input [31:0] v, input [31:0] a);
-		begin
-			v0 = v;
-			a0 = a;
-			en = 1;
-			tick();
-			$display("Syscall v0=%0d, a0=0x%08X → Halt=%b, Hex=0x%08X", v0, a0, Halt, Hex);
-			en = 0;
-			tick();
-		end
-	endtask
+  task test_syscall;
+    input [31:0] test_v0, test_a0;
+    input expect_halt;
+    input [31:0] expect_hex;
+    input [8*30:1] label;
+    begin
+      v0 = test_v0;
+      a0 = test_a0;
+      en = 1;
+      tick();
+      en = 0;
 
-	initial begin
-		$display("=== SyscallDecoder Test ===");
+      $display("[%s]", label);
+      $display("    v0 = %h, a0 = %h", v0, a0);
+      $display("    Halt = %b (expected %b) %s", Halt, expect_halt, (Halt == expect_halt) ? "OK" : "MISMATCH");
+      $display("    Hex  = %h (expected %h) %s", Hex, expect_hex, (Hex == expect_hex) ? "OK" : "MISMATCH");
+    end
+  endtask
 
-		// 초기화
-		v0 = 0; a0 = 0; en = 0; reset = 1; tick(); reset = 0; tick();
+  initial begin
+    clk = 0;
+    reset = 1;
+    en = 0;
+    tick();
+    reset = 0;
 
-		// 정상 syscall (v0 = 1), should not halt
-		run_syscall(1, 32'h12345678);
+    // Basic syscall write (non-halt)
+    test_syscall(32'h00000001, 32'h12345678, 0, 32'h12345678, "Write Hex, no halt");
 
-		// 종료 syscall (v0 = 10)
-		run_syscall(10, 32'hABCD1234);
+    // Syscall halt
+    test_syscall(32'h0000000A, 32'hDEADBEEF, 1, 32'hDEADBEEF, "Halt and write");
 
-		// en = 0 (disabled) → 아무것도 안 해야 함
-		v0 = 10; a0 = 32'hFFFFFFFF; en = 0; tick();
-		$display("Disabled → Halt=%b, Hex=0x%08X", Halt, Hex);
+    // en = 0 should not write
+    v0 = 32'h0000000A;
+    a0 = 32'hFEEDFACE;
+    en = 0;
+    tick();
+    $display("[No enable]");
+    $display("    Hex = %h (expected unchanged) %s", Hex, (Hex == 32'hDEADBEEF) ? "OK" : "MISMATCH");
+    $display("    Halt = %b (expected 0) %s", Halt, (Halt == 1'b0) ? "OK" : "MISMATCH");
 
-		$display("=== Done ===");
-		#20 $finish;
-	end
-
+    $display("SyscallDecoder tests completed.");
+    $finish;
+  end
 endmodule

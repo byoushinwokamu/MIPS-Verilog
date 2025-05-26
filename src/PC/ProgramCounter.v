@@ -36,75 +36,84 @@ module ProgramCounter (
 
 endmodule
 
-module ProgramCounter_tb;
-    reg [31:0] prevprog, jumpamt, jumpaddr, CP0_PCout;
-    reg [25:0] op;
-    reg IsEret, IsCOP0, HasExp, Equal, BneOrBeq, Branch, Jump, IsJR, clk, reset;
-    wire [31:0] progaddr;
+module tb_ProgramCounter;
 
-    ProgramCounter inst (
-        .progaddr, .prevprog, .op, .jumpamt, .jumpaddr, .CP0_PCout,
-        .IsEret, .IsCOP0, .HasExp, .Equal, .BneOrBeq, .Branch, .Jump, .IsJR,
-        .clk, .reset
-    );
+  reg [31:0] prevprog, op, jumpamt, jumpaddr, CP0_PCout;
+  reg IsEret, IsCOP0, HasExp, Equal, BneOrBeq, Branch, Jump, IsJR, clk, reset;
+  wire [31:0] progaddr;
 
-    initial clk = 0;
-    always #5 clk = ~clk;
+  ProgramCounter dut (
+    .progaddr(progaddr), .prevprog(prevprog), .op(op), .jumpamt(jumpamt),
+    .jumpaddr(jumpaddr), .CP0_PCout(CP0_PCout), .IsEret(IsEret), .IsCOP0(IsCOP0),
+    .HasExp(HasExp), .Equal(Equal), .BneOrBeq(BneOrBeq), .Branch(Branch),
+    .Jump(Jump), .IsJR(IsJR), .clk(clk), .reset(reset)
+  );
 
-    task tick;
-        begin #10; end
-    endtask
-
-    task reset_all;
-        begin
-            prevprog = 32'h1000;
-            op = 26'h0000000;
-            jumpamt = 0;
-            jumpaddr = 0;
-            CP0_PCout = 32'hDEAD_BEEF;
-            IsEret = 0; IsCOP0 = 0; HasExp = 0;
-            Equal = 0; BneOrBeq = 0; Branch = 0;
-            Jump = 0; IsJR = 0;
-            reset = 1; tick(); reset = 0; tick();
-        end
-    endtask
-
-    initial begin
-        $display("=== ProgramCounter Test (Verilog2001) ===");
-        reset_all();
-
-        // 기본 동작: PC + 4
-        tick();
-        $display("[Normal PC+4] progaddr = 0x%08X", progaddr);
-
-        // Branch taken: Equal ^ BneOrBeq = 1
-        jumpamt = 32'd4;
-        Branch = 1; Equal = 1; BneOrBeq = 0;
-        tick();
-        $display("[Branch taken] progaddr = 0x%08X", progaddr);
-
-        // Jump (J-type)
-        Jump = 1; Branch = 0; op = 26'h3FFFFF;
-        tick();
-        $display("[Jump] progaddr = 0x%08X", progaddr);
-
-        // JR
-        Jump = 0; IsJR = 1; jumpaddr = 32'hCAFEBABE;
-        tick();
-        $display("[Jump Register] progaddr = 0x%08X", progaddr);
-
-        // Exception
-        IsJR = 0; HasExp = 1;
-        tick();
-        $display("[Exception] progaddr = 0x%08X", progaddr);
-
-        // ERET
-        HasExp = 0; IsCOP0 = 1; IsEret = 1;
-        tick();
-        $display("[ERET] progaddr = 0x%08X", progaddr);
-
-        $display("=== Done ===");
-        #20 $finish;
+  task tick;
+    begin
+      #1 clk = 1; #1 clk = 0;
     end
+  endtask
 
+  task test_pc;
+    input [31:0] init_pc;
+    input [31:0] opval;
+    input [31:0] jaddr;
+    input [31:0] jamt;
+    input [31:0] cp0val;
+    input br;
+    input j;
+    input jr;
+    input eq;
+    input bne;
+    input iseret;
+    input iscop0;
+    input hasexp;
+    input [31:0] expected;
+    input [8*32:1] label;
+    begin
+      prevprog = init_pc;
+      op = opval;
+      jumpamt = jamt;
+      jumpaddr = jaddr;
+      CP0_PCout = cp0val;
+      Branch = br;
+      Jump = j;
+      IsJR = jr;
+      Equal = eq;
+      BneOrBeq = bne;
+      IsEret = iseret;
+      IsCOP0 = iscop0;
+      HasExp = hasexp;
+      tick();
+
+      $display("[%s]", label);
+      $display("    progaddr = %h (expected %h) %s", progaddr, expected, (progaddr == expected) ? "OK" : "MISMATCH");
+    end
+  endtask
+
+  initial begin
+    clk = 0;
+    reset = 1;
+    tick();
+    reset = 0;
+
+    // Normal PC increment
+    test_pc(32'h0040_0000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32'h0040_0004, "Next PC no branch");
+
+    // Branch taken (beq, equal)
+    test_pc(32'h0040_0000, 0, 0, 4, 0, 1, 0, 0, 1, 0, 0, 0, 0, 32'h0040_0014, "Branch taken");
+
+    // Branch not taken (bne, equal)
+    test_pc(32'h0040_0000, 0, 0, 4, 0, 1, 0, 0, 1, 1, 0, 0, 0, 32'h0040_0004, "Branch not taken");
+
+    // Jump
+    test_pc(32'h0040_0000, 32'h0000_1234, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 32'h0000_48D0, "Jump address");
+
+    // Jump Register
+    test_pc(32'h0040_0000, 0, 32'h9000_0000, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 32'h9000_0000, "Jump register");
+
+    $display("ProgramCounter tests completed.");
+    $finish;
+  end
 endmodule

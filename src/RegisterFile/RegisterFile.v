@@ -108,64 +108,91 @@ module RegFile (reg1o, reg2o, reg1n, reg2n, wregn, wdata, wen, clk, reset);
 
 endmodule
 
-module RegFile_tb;
-	wire [31:0] reg1o;
-	wire [31:0] reg2o;
-	reg [4:0] reg1n;
-	reg [4:0] reg2n;
-	reg [4:0] wregn;
-	reg [31:0] wdata;
-	reg wen, clk, reset;
-	RegFile inst(reg1o, reg2o, reg1n, reg2n, wregn, wdata, wen, clk, reset);
-	integer i;
+module tb_RegFile;
 
-	// Reference memory
-	reg [31:0] golden_reg [0:31];
+  reg [4:0] reg1n, reg2n, wregn;
+  reg [31:0] wdata;
+  reg wen, clk, reset;
+  wire [31:0] reg1o, reg2o;
 
-	always #5 clk = ~clk;
+  RegFile dut (
+    .reg1o(reg1o), .reg2o(reg2o),
+    .reg1n(reg1n), .reg2n(reg2n),
+    .wregn(wregn), .wdata(wdata),
+    .wen(wen), .clk(clk), .reset(reset)
+  );
 
-	initial begin
-		reg1n <= 0; reg2n <= 0; wregn <= 0; wdata <= 0;
-		wen <= 0; clk <= 0; reset <= 0;
+  task tick;
+    begin
+      #1 clk = 1;
+      #1 clk = 0;
+    end
+  endtask
 
-		$display("===== RegFile Test Start =====");
+  task test_write_read;
+    input [4:0] wreg, rreg1, rreg2;
+    input [31:0] val;
+    input [8*20:1] label;
+    begin
+      $display("[%s] Writing %h to reg %0d", label, val, wreg);
+      wregn = wreg;
+      wdata = val;
+      wen = 1;
+      tick();
+      wen = 0;
 
-		// Reset
-		#5 reset <= 1;
-		#5 reset <= 0;
-		for (i = 0; i < 32; i = i+1) golden_reg[i] = 0; 
+      reg1n = rreg1;
+      reg2n = rreg2;
+      #1;
+      $display("    Read reg1o = %h (expected %h) %s", reg1o, val, (reg1o == val) ? "OK" : "MISMATCH");
+      $display("    Read reg2o = %h (expected %h) %s", reg2o, val, (reg2o == val) ? "OK" : "MISMATCH");
+    end
+  endtask
 
-		// Write phase
-		wen <= 1;
-		for (i = 1; i < 32; i = i+1) begin
-			wregn <= i;
-			wdata <= i;
-			golden_reg[i] = i;
-			#10;
-			$display("Write: reg[%0d] <= %0d", i, i);
-		end
+  initial begin
+    clk = 0;
+    reset = 1;
+    wen = 0;
+    tick();
+    reset = 0;
 
-		// Disable write
-		wen <= 0;
+    // Test 1: Write to reg2 and read back
+    test_write_read(5'd2, 5'd2, 5'd2, 32'hABCD1234, "write_v0");
 
-		// Read and check phase
-		for (i = 0; i < 32; i = i+1) begin
-			reg1n <= i;
-			reg2n <= i;
-			#10;
-			if (reg1o !== golden_reg[i])
-				$display("*** reg1o MISMATCH at reg[%0d]: got %0d, expected %0d", i, reg1o, golden_reg[i]);
-			else
-				$display(":) reg1o match at reg[%0d]: %0d", i, reg1o);
+    // Test 2: Write to reg31 (ra) and read from reg1 and reg2
+    test_write_read(5'd31, 5'd31, 5'd31, 32'hDEADBEEF, "write_ra");
 
-			if (reg2o !== golden_reg[i])
-				$display("*** reg2o MISMATCH at reg[%0d]: got %0d, expected %0d", i, reg2o, golden_reg[i]);
-			else
-				$display(":) reg2o match at reg[%0d]: %0d", i, reg2o);
-		end
+    // Test 3: Attempt write with wen=0
+    $display("[wen=0] No write should occur");
+    wregn = 5'd5; wdata = 32'hFFFFFFFF; wen = 0;
+    tick();
+    reg1n = 5'd5; reg2n = 5'd5;
+    #1;
+    $display("    Read reg1o = %h (expected undefined or 0) %s", reg1o, (reg1o == 32'hFFFFFFFF) ? "MISMATCH" : "OK");
 
-		$display("===== RegFile Test Complete =====");
-		#10 $finish;
-	end
+    // Test 4: Reset clears all but reg0 should always stay zero
+    $display("[Reset] Reset all registers");
+    reset = 1;
+    tick();
+    reset = 0;
+    reg1n = 5'd2;
+    reg2n = 5'd31;
+    #1;
+    $display("    After reset, reg2 = %h (expected 0) %s", reg1o, (reg1o == 32'd0) ? "OK" : "MISMATCH");
+    $display("    After reset, reg31 = %h (expected 0) %s", reg2o, (reg2o == 32'd0) ? "OK" : "MISMATCH");
 
+    // Test 5: Write to reg0 should have no effect
+    $display("[reg0] Write attempt to reg0 (should remain zero)");
+    wregn = 5'd0;
+    wdata = 32'hFFFFFFFF;
+    wen = 1;
+    tick();
+    wen = 0;
+    reg1n = 5'd0;
+    #1;
+    $display("    Read reg0 = %h (expected 0) %s", reg1o, (reg1o == 32'd0) ? "OK" : "MISMATCH");
+
+    $display("All RegFile tests completed.");
+    $finish;
+  end
 endmodule

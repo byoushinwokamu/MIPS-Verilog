@@ -50,63 +50,74 @@ module Statistics (
 
 endmodule
 
-module Statistics_tb;
-	reg clk, rst;
-	reg [5:0] op;
-	wire [31:0] J, R, I, TotalCycles;
+module tb_Statistics;
 
-	Statistics inst (
-		.J(J), .R(R), .I(I), .TotalCycles(TotalCycles),
-		.clk(clk), .op(op), .rst(rst)
-	);
+  reg clk, rst;
+  reg [5:0] op;
+  wire [31:0] J, R, I, TotalCycles;
 
-	initial clk = 0;
-	always #5 clk = ~clk;
+  Statistics dut (
+    .J(J), .R(R), .I(I), .TotalCycles(TotalCycles),
+    .clk(clk), .op(op), .rst(rst)
+  );
 
-	task tick;
-		begin #10; end
-	endtask
+  task tick;
+    begin
+      #1 clk = 1;
+      #1 clk = 0;
+    end
+  endtask
 
-	task apply_op(input [5:0] opcode, input [255:0] label);
-		begin
-			op = opcode;
-			tick();
-			$display("[%s] op = %b | R=%0d, I=%0d, J=%0d, Total=%0d",
-								label, op, R, I, J, TotalCycles);
-		end
-	endtask
+  task test_op;
+    input [5:0] opcode;
+    input [31:0] exp_j, exp_r, exp_i, exp_cycles;
+    input [8*20:1] label;
+    begin
+      op = opcode;
+      tick();
+      $display("[%s] opcode = %b", label, opcode);
+      $display("    J = %d (expected %d) %s", J, exp_j, (J == exp_j) ? "OK" : "MISMATCH");
+      $display("    R = %d (expected %d) %s", R, exp_r, (R == exp_r) ? "OK" : "MISMATCH");
+      $display("    I = %d (expected %d) %s", I, exp_i, (I == exp_i) ? "OK" : "MISMATCH");
+      $display("    TotalCycles = %d (expected %d) %s", TotalCycles, exp_cycles, (TotalCycles == exp_cycles) ? "OK" : "MISMATCH");
+    end
+  endtask
 
-	initial begin
-		$display("=== Statistics Test ===");
+  initial begin
+    clk = 0;
+    rst = 1;
+    tick();
+    rst = 0;
 
-		// 초기화
-		rst = 1; tick(); rst = 0; tick();
+    // First instruction: R-type
+    test_op(6'b000000, 0, 1, 0, 1, "R-type 1");
 
-		// R-type
-		apply_op(6'b000000, "R-type");
+    // J-type: j (000010)
+    test_op(6'b000010, 1, 1, 0, 2, "J-type j");
 
-		// I-type (wi[1] ~ wi[10])
-		apply_op(6'b100011, "lw");     // wi[1]
-		apply_op(6'b101011, "sw");     // wi[2]
-		apply_op(6'b000101, "bne");    // wi[3]
-		apply_op(6'b000100, "beq");    // wi[4]
-		apply_op(6'b001101, "ori");    // wi[6]
-		apply_op(6'b001010, "slti");   // wi[7]
-		apply_op(6'b001000, "addi");   // wi[8]
-		apply_op(6'b001001, "addiu");  // wi[9]
-		apply_op(6'b001000, "addi again"); // wi[10] (중복)
+    // J-type: jal (000011)
+    test_op(6'b000011, 2, 1, 0, 3, "J-type jal");
 
-		// J-type (wj[1], wj[2])
-		apply_op(6'b000010, "j");
-		apply_op(6'b000011, "jal");
+    // I-type: addi (001000)
+    test_op(6'b001000, 2, 1, 1, 4, "I-type addi");
 
-		// 여유 tick
-		// tick();
+    // I-type: lw (100011)
+    test_op(6'b100011, 2, 1, 2, 5, "I-type lw");
 
-		// 최종 결과
-		$display("Final: R=%0d, I=%0d, J=%0d, Total=%0d", R, I, J, TotalCycles);
-		$display("=== Done ===");
-		#10 $finish;
-	end
+    // R-type again
+    test_op(6'b000000, 2, 2, 2, 6, "R-type 2");
 
+    // Reset check
+    rst = 1;
+    tick();
+    rst = 0;
+    $display("[Reset] All counts reset");
+    $display("    J = %d (expected 0) %s", J, (J == 0) ? "OK" : "MISMATCH");
+    $display("    R = %d (expected 0) %s", R, (R == 0) ? "OK" : "MISMATCH");
+    $display("    I = %d (expected 0) %s", I, (I == 0) ? "OK" : "MISMATCH");
+    $display("    TotalCycles = %d (expected 0) %s", TotalCycles, (TotalCycles == 0) ? "OK" : "MISMATCH");
+
+    $display("Statistics tests completed.");
+    $finish;
+  end
 endmodule

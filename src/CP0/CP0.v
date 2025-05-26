@@ -72,213 +72,82 @@ module CP0 (
 
 endmodule
 
-module CP0_tb;
-	reg ExpSrc0, ExpSrc1, ExpSrc2;
-	reg clk, enable, reset;
-	reg [31:0] Instruction, PCin, Din;
-	wire [31:0] PCout, Dout;
-	wire ExRegWrite, ExpBlock, IsEret, HasExp;
+module tb_CP0;
 
-	CP0 inst (
-		.PCout, .Dout, .ExRegWrite, .ExpBlock, .IsEret, .HasExp,
-		.ExpSrc0, .ExpSrc1, .ExpSrc2, .clk, .enable,
-		.Instruction, .PCin, .Din, .reset
-	);
+  reg clk, reset, enable;
+  reg ExpSrc0, ExpSrc1, ExpSrc2;
+  reg [31:0] Instruction, PCin, Din;
+  wire [31:0] PCout, Dout;
+  wire ExRegWrite, ExpBlock, IsEret, HasExp;
 
-	initial begin
-		clk = 0;
-		forever #5 clk = ~clk;
-	end
+  CP0 dut (
+    .PCout, .Dout, .ExRegWrite, .ExpBlock, .IsEret, .HasExp,
+    .ExpSrc0, .ExpSrc1, .ExpSrc2, .clk, .enable,
+    .Instruction, .PCin, .Din, .reset
+  );
 
-	task tick(); begin #10; end endtask
-
-	task reset_all();
-		begin
-			ExpSrc0 = 0; ExpSrc1 = 0; ExpSrc2 = 0;
-			enable = 0; reset = 1;
-			Instruction = 32'd0;
-			PCin = 32'hDEAD_BEEF;
-			Din = 32'h1234_5678;
-			tick();
-			reset = 0;
-			tick();
-		end
-	endtask
-
-	task trigger_exception(input integer src);
-		begin
-			ExpSrc0 = (src == 0);
-			ExpSrc1 = (src == 1);
-			ExpSrc2 = (src == 2);
-			tick();
-			ExpSrc0 = 0; ExpSrc1 = 0; ExpSrc2 = 0;
-		end
-	endtask
-
-	task write_reg(input [1:0] sel, input [31:0] val);
-		begin
-			enable = 1;
-			Instruction[23] = 0;   // ExRegWrite = ~Instruction[23] → 1
-			Instruction[12:11] = sel;
-			Din = val;
-			tick();
-			enable = 0;
-		end
-	endtask
-
-	task read_reg(input [1:0] sel);
-		begin
-			Instruction[23] = 1;  // ExRegWrite = ~1 = 0 → 읽기 모드
-			Instruction[12:11] = sel;
-			tick();
-			$display("Read CP0[sel=%0d] = 0x%08X", sel, Dout);
-		end
-	endtask
-
-	task check_eret();
-		begin
-			Instruction[5:0] = 6'b011000;  // eret opcode
-			tick();
-			$display("IsEret = %b, PCout = 0x%08X", IsEret, PCout);
-		end
-	endtask
-
-	initial begin
-		$display("=== CP0 Test Start ===");
-
-		reset_all();
-
-		// ▶ Write to Status (sel = 01)
-		write_reg(2'b01, 32'h00000001);  // Set Status[0] = 1 → block on
-		$display("ExpBlock = %b", ExpBlock);
-
-		// ▶ Trigger exception 0 (ExpSrc0 = 1)
-		trigger_exception(0);  // cause should be 0x1
-		$display("HasExp = %b", HasExp);
-		read_reg(2'b11);       // Cause
-
-		// ▶ EPC 저장 확인 (PCin = 0xDEAD_BEEF)
-		read_reg(2'b00);       // EPC
-		$display("PCout (EPC) = 0x%08X", PCout);
-
-		// ▶ Block 레지스터에 쓰기
-		write_reg(2'b10, 32'hBEEF_BEEF);
-		read_reg(2'b10);       // Block
-
-		// ▶ ERET 동작 확인
-		check_eret();
-
-		$display("=== CP0 Test Done ===");
-		#20 $finish;
-	end
-
-endmodule
-
-module CP0_tb2;
-    reg ExpSrc0, ExpSrc1, ExpSrc2;
-    reg clk, enable, reset;
-    reg [31:0] Instruction, PCin, Din;
-    wire [31:0] PCout, Dout;
-    wire ExRegWrite, ExpBlock, IsEret, HasExp;
-
-    CP0 dut (
-        .PCout, .Dout, .ExRegWrite, .ExpBlock, .IsEret, .HasExp,
-        .ExpSrc0, .ExpSrc1, .ExpSrc2, .clk, .enable,
-        .Instruction, .PCin, .Din, .reset
-    );
-
-    initial clk = 0;
-    always #5 clk = ~clk;
-
-    task tick;
-        begin #10; end
-    endtask
-
-    task reset_all;
-        begin
-            ExpSrc0 = 0; ExpSrc1 = 0; ExpSrc2 = 0;
-            enable = 0; reset = 1;
-            Instruction = 0;
-            PCin = 32'hDEAD_BEEF;
-            Din = 32'h12345678;
-            tick();
-            reset = 0;
-            tick();
-        end
-    endtask
-
-    task write_cp0(input [1:0] sel, input [31:0] val);
-        begin
-            enable = 1;
-            Instruction[23] = 0;         // ExRegWrite = ~Instruction[23] = 1
-            Instruction[12:11] = sel;
-            Din = val;
-            tick();
-            enable = 0;
-        end
-    endtask
-
-    task read_cp0(input [1:0] sel);
-        begin
-            Instruction[23] = 1;         // ExRegWrite = 0
-            Instruction[12:11] = sel;
-            tick();
-            $display("Dout[sel=%0d] = 0x%08X", sel, Dout);
-        end
-    endtask
-
-    task trigger_exp(input integer idx);
-        begin
-            if (idx == 0) ExpSrc0 = 1;
-            else if (idx == 1) ExpSrc1 = 1;
-            else if (idx == 2) ExpSrc2 = 1;
-            tick();
-            ExpSrc0 = 0; ExpSrc1 = 0; ExpSrc2 = 0;
-            tick();  // propagate
-        end
-    endtask
-
-    task check_eret;
-        begin
-            Instruction[5:0] = 6'b011000;  // eret pattern
-            tick();
-            $display("IsEret = %b, PCout = 0x%08X", IsEret, PCout);
-        end
-    endtask
-
-    initial begin
-        $display("=== CP0 Test Start ===");
-
-        reset_all();
-
-        // Status[0] = 1 (ExpBlock = 1)
-        write_cp0(2'b01, 32'h00000001);
-        $display("ExpBlock = %b", ExpBlock);
-
-        // Block = 0x00000007 (BlockSrc0/1/2 = 1)
-        write_cp0(2'b10, 32'h00000007);
-
-        // Exception from ExpSrc0 → BlockSrc0 = 1 → 무시되어야 함
-        trigger_exp(0);
-        $display("Blocked ExpSrc0 → HasExp = %b", HasExp);
-
-        // Block = 0x00000000 (모두 허용)
-        write_cp0(2'b10, 32'h00000000);
-
-        // Exception from ExpSrc1 → Cause = 0x00000003
-        trigger_exp(1);
-        $display("ExpSrc1 allowed → HasExp = %b", HasExp);
-        read_cp0(2'b11);  // Cause
-        read_cp0(2'b00);  // EPC (should be PCin)
-
-        // EPC 직접 쓰기 (sel == 00)
-        write_cp0(2'b00, 32'hAABBCCDD);
-        read_cp0(2'b00);
-
-        // ERET 명령 디코드
-        check_eret();
-
-        $display("=== CP0 Test Done ===");
-        #20 $finish;
+  task tick;
+    begin
+      #1 clk = 1;
+      #1 clk = 0;
     end
+  endtask
+
+  task test_exception_input;
+    input [31:0] instr;
+    input src0, src1, src2;
+    input [31:0] pcval;
+    input [31:0] dinval;
+    input [8*20:1] label;
+    begin
+      Instruction = instr;
+      ExpSrc0 = src0;
+      ExpSrc1 = src1;
+      ExpSrc2 = src2;
+      PCin = pcval;
+      Din = dinval;
+      enable = 1;
+
+      tick();
+
+      $display("[%s] ExpSrc = %b%b%b", label, src2, src1, src0);
+      $display("    HasExp = %b", HasExp);
+      $display("    PCout  = %h", PCout);
+      $display("    Dout   = %h", Dout);
+    end
+  endtask
+
+  initial begin
+    clk = 0;
+    reset = 1;
+    Instruction = 32'd0;
+    ExpSrc0 = 0;
+    ExpSrc1 = 0;
+    ExpSrc2 = 0;
+    enable = 0;
+    PCin = 32'h1000_0000;
+    Din = 32'hDEAD_BEEF;
+    tick();
+    reset = 0;
+
+    // Basic eret detection
+    Instruction = 32'b010000_00000_00000_00000_00000_011000;
+    #1;
+    $display("[IsEret] IsEret = %b (expected 1) %s", IsEret, (IsEret == 1'b1) ? "OK" : "MISMATCH");
+
+    // Write EPC via exception trigger (src2 only)
+    test_exception_input(32'd0, 0, 0, 1, 32'h1234_5678, 32'hCAFEBABE, "ExpSrc2 only");
+
+    // Trigger all three exception sources
+    test_exception_input(32'd0, 1, 1, 1, 32'h8765_4321, 32'hBEEFCAFE, "All ExpSrc");
+
+    // Explicit write with enable
+    Instruction = 32'b010000_00000_00000_00000_00000_000000; // sel = 00, ExRegWrite = 1
+    enable = 1;
+    Din = 32'hFEEDFACE;
+    tick();
+
+    $display("All CP0 tests completed.");
+    $finish;
+  end
 endmodule

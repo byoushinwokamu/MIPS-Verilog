@@ -8,43 +8,45 @@ module ImmediateExtender (
 
 endmodule
 
-module ImmediateExtender_tb;
-	reg [15:0] in;
-	reg ZeroExtend;
-	wire [31:0] out;
+module tb_ImmediateExtender;
 
-	ImmediateExtender dut (
-		.out(out),
-		.in(in),
-		.ZeroExtend(ZeroExtend)
-	);
+  reg [15:0] in;
+  reg ZeroExtend;
+  wire [31:0] out;
 
-	task test(input [15:0] imm, input ze);
-		begin
-			in = imm;
-			ZeroExtend = ze;
-			#1;
-			$display("in = 0x%04X, ZeroExtend = %b → out = 0x%08X", in, ZeroExtend, out);
-		end
-	endtask
+  ImmediateExtender dut (
+    .out(out), .in(in), .ZeroExtend(ZeroExtend)
+  );
 
-	initial begin
-		$display("=== ImmediateExtender Test ===");
+  task test_extend;
+    input [15:0] val;
+    input zext;
+    input [31:0] expected;
+    input [8*20:1] label;
+    begin
+      in = val;
+      ZeroExtend = zext;
+      #1;
+      $display("[%s]", label);
+      $display("    in = %h, ZeroExtend = %b", val, zext);
+      $display("    out = %h (expected %h) %s", out, expected, (out == expected) ? "OK" : "MISMATCH");
+    end
+  endtask
 
-		// Positive value (sign bit = 0)
-		test(16'h1234, 0);  // Sign extend
-		test(16'h1234, 1);  // Zero extend
+  initial begin
+    // Zero extend positive
+    test_extend(16'h1234, 1'b1, 32'h00001234, "ZeroExtend pos");
 
-		// Negative value (sign bit = 1)
-		test(16'hF234, 0);  // Sign extend
-		test(16'hF234, 1);  // Zero extend
+    // Zero extend negative (MSB=1 but zero extended)
+    test_extend(16'hF234, 1'b1, 32'h0000F234, "ZeroExtend neg");
 
-		// Edge case: sign bit 1 but value = 0xFFFF
-		test(16'hFFFF, 0);  // Sign extend → 0xFFFFFFFF
-		test(16'hFFFF, 1);  // Zero extend → 0x0000FFFF
+    // Sign extend positive
+    test_extend(16'h1234, 1'b0, 32'h00001234, "SignExtend pos");
 
-		$display("=== Done ===");
-		#5 $finish;
-	end
+    // Sign extend negative
+    test_extend(16'hF234, 1'b0, 32'hFFFFF234, "SignExtend neg");
 
+    $display("ImmediateExtender tests completed.");
+    $finish;
+  end
 endmodule

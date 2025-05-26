@@ -20,45 +20,54 @@ module InstMemory #(
 
 endmodule
 
-module InstMemory_tb;
-	reg clk = 0;
-	reg reset = 0;
-	reg [9:0] addr = 0;
-	wire [31:0] dout;
+module tb_InstMemory;
 
-	// DUT
-	InstMemory #(
-		.INIT_FILE1("program1.hex"),
-		.INIT_FILE2("program2.hex")
-	) dut (
-		.dout(dout),
-		.addr(addr),
-		.clk(clk),
-		.reset(reset)
-	);
+  reg [9:0] addr;
+  reg clk, reset;
+  wire [31:0] dout;
 
-	// Clock generation
-	always #5 clk = ~clk;
+  // Test instance with test hex files (replace with your actual files)
+  InstMemory #(
+    .INIT_FILE1("prog1.hex"),
+    .INIT_FILE2("prog2.hex")
+  ) dut (
+    .dout(dout), .addr(addr), .clk(clk), .reset(reset)
+  );
 
-	initial begin
-		$display("=== InstMemory Dual-ROM Test Start ===");
+  task tick;
+    begin
+      #1 clk = 1;
+      #1 clk = 0;
+    end
+  endtask
 
-		// Reset and wait for $readmemh
-		#5 reset = 1;
-		#10 reset = 0;
+  task test_read;
+    input [9:0] address;
+    input [31:0] expected;
+    input [8*20:1] label;
+    begin
+      addr = address;
+      tick();
+      $display("[%s] addr = %h", label, address);
+      $display("    dout = %h (expected %h) %s", dout, expected, (dout == expected) ? "OK" : "MISMATCH");
+    end
+  endtask
 
-		// Read from lower ROM (addr[9] = 0)
-		addr = 10'd0;  #10 $display("addr %3d (ROM1) -> dout = 0x%08X", addr, dout);
-		addr = 10'd1;  #10 $display("addr %3d (ROM1) -> dout = 0x%08X", addr, dout);
-		addr = 10'd2;  #10 $display("addr %3d (ROM1) -> dout = 0x%08X", addr, dout);
+  initial begin
+    clk = 0;
+    reset = 1;
+    tick();
+    reset = 0;
 
-		// Read from upper ROM (addr[9] = 1)
-		addr = 10'd512;  #10 $display("addr %3d (ROM2) -> dout = 0x%08X", addr, dout);
-		addr = 10'd513;  #10 $display("addr %3d (ROM2) -> dout = 0x%08X", addr, dout);
-		addr = 10'd514;  #10 $display("addr %3d (ROM2) -> dout = 0x%08X", addr, dout);
+    test_read(10'd0,    32'h20110001, "IMem1 addr 0");
+    test_read(10'd1,    32'h08000c05, "IMem1 addr 1");
+    test_read(10'd255,  32'h0000000c, "IMem1 addr 255");
 
-		$display("=== Test Done ===");
-		#10 $finish;
-	end
+    test_read(10'd256,  32'h16310005, "IMem2 addr 0");
+    test_read(10'd300,  32'h0000000c, "IMem2 addr 44");
+    test_read(10'd511,  32'h00000000, "IMem2 addr 255");
 
+    $display("InstMemory tests completed.");
+    $finish;
+  end
 endmodule

@@ -46,56 +46,77 @@ module Add (res, CF, OF, sr, tg, cin);
 
 endmodule
 
-module Add_tb;
-    reg [31:0] sr, tg;
-    reg cin;
-    wire [31:0] res;
-    wire CF, OF;
+`timescale 1ns/1ps
 
-    Add inst (
-        .res(res),
-        .CF(CF),
-        .OF(OF),
-        .sr(sr),
-        .tg(tg),
-        .cin(cin)
-    );
+module tb_Add;
 
-    task test;
-        input [31:0] a, b;
-        input c;
-        begin
-            sr = a;
-            tg = b;
-            cin = c;
-            #1;
-            $display("sr = 0x%08X, tg = 0x%08X, cin = %b", sr, tg, cin);
-            $display(" → res = 0x%08X, CF = %b, OF = %b", res, CF, OF);
-            $display("--------------------------------------------");
-        end
-    endtask
+	// DUT inputs
+	reg [31:0] sr, tg;
+	reg cin;
 
-    initial begin
-        $display("=== Add Module Test ===");
+	// DUT outputs
+	wire [31:0] res;
+	wire CF, OF;
 
-        // 기본 덧셈
-        test(32'h00000001, 32'h00000001, 1'b0);  // 1 + 1
-        test(32'h0000FFFF, 32'h00000001, 1'b0);  // 캐리 발생?
+	// Instantiate the Add module
+	Add dut (
+		.res(res),
+		.CF(CF),
+		.OF(OF),
+		.sr(sr),
+		.tg(tg),
+		.cin(cin)
+	);
 
-        // carry 발생
-        test(32'hFFFFFFFF, 32'h00000001, 1'b0);  // CF=1, OF=0
+	// Task to check result
+	task check_result;
+		input [31:0] in1, in2;
+		input cin_in;
+		input [31:0] expected_res;
+		input expected_CF;
+		input expected_OF;
 
-        // overflow 발생 (양수 + 양수 = 음수)
-        test(32'h7FFFFFFF, 32'h00000001, 1'b0);  // OF=1, CF=X
+		begin
+			sr = in1;
+			tg = in2;
+			cin = cin_in;
+			#1; // wait for combinational logic
 
-        // overflow 발생 (음수 + 음수 = 양수)
-        test(32'h80000000, 32'h80000000, 1'b0);  // OF=1, CF=X
+			$display("--------------------------------------------------");
+			$display("Input A       = 0x%h", sr);
+			$display("Input B       = 0x%h", tg);
+			$display("Cin           = %b", cin);
+			$display("Expected Res  = 0x%h", expected_res);
+			$display("Actual Res    = 0x%h", res);
+			$display("Expected CF   = %b, Actual CF = %b", expected_CF, CF);
+			$display("Expected OF   = %b, Actual OF = %b", expected_OF, OF);
+			$display("Result %s", (res === expected_res && CF === expected_CF && OF === expected_OF) ? "✔ PASS" : "✘ FAIL");
+		end
+	endtask
 
-        // cin 테스트
-        test(32'h00000001, 32'h00000001, 1'b1);  // 1+1+1 = 3
+	initial begin
+		// Test Case 1: Simple addition without carry
+		check_result(32'h00000001, 32'h00000001, 1'b0, 32'h00000002, 1'b0, 1'b0);
 
-        $display("=== Test Done ===");
-        #10 $finish;
-    end
+		// Test Case 2: With carry-in
+		check_result(32'h00000001, 32'h00000001, 1'b1, 32'h00000003, 1'b0, 1'b0);
+
+		// Test Case 3: Carry out (unsigned overflow)
+		check_result(32'hFFFFFFFF, 32'h00000001, 1'b0, 32'h00000000, 1'b1, 1'b0);
+
+		// Test Case 4: Signed overflow (positive + positive = negative)
+		check_result(32'h7FFFFFFF, 32'h00000001, 1'b0, 32'h80000000, 1'b0, 1'b1);
+
+		// Test Case 5: Signed overflow (negative + negative = positive)
+		check_result(32'h80000000, 32'h80000000, 1'b0, 32'h00000000, 1'b1, 1'b1);
+
+		// Test Case 6: Random mid-range values
+		check_result(32'h12345678, 32'h11111111, 1'b0, 32'h23456789, 1'b0, 1'b0);
+
+		$display("--------------------------------------------------");
+		$display("All test cases finished.");
+		$finish;
+	end
 
 endmodule
+

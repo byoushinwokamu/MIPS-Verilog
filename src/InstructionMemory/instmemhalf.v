@@ -5,7 +5,7 @@ module InstMem_half #(
 	input [8:0] addr;
 	input clk, reset;
 
-	// 512byte ROM
+	// 512 × 4byte ROM
 	reg [31:0] rom [0:511];
 	integer i;
 
